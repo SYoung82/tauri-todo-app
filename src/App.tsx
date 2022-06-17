@@ -5,9 +5,15 @@ import TaskInput from './components/TaskInput';
 import DeleteTaskButton from './components/DeleteTasksButton';
 import TaskList from './components/TaskList';
 
+export interface Task {
+  id: string;
+  description: string;
+  complete: boolean;
+}
+
 function App() {
-  const [content, setContent] = useState('');
-  const [tasks, setTasks] = useState([]);
+  const [description, setDescription] = useState('');
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   const fetchTasks = async () => setTasks(await invoke('get_tasks'));
 
@@ -17,28 +23,28 @@ function App() {
 
   const handleKeyDown = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      await invoke('add_task', { content })
-        .then(() => setContent(''))
+      await invoke('add_task', { description: description })
+        .then(() => setDescription(''))
         .then(() => fetchTasks());
     } else if (e.key === 'Escape') {
-      setContent('');
+      setDescription('');
     }
   };
 
   const handleDeleteAll = async (e: React.MouseEvent) => {
-    await invoke('delete_tasks').then(() => fetchTasks());
+    await invoke('delete_all_tasks').then(() => fetchTasks());
   };
 
-  const handleDelete = async (index: number) => {
-    await invoke('delete_task_by_index', { index }).then(() => fetchTasks());
+  const handleDelete = async (task: Task) => {
+    await invoke('delete_task_by_id', { id: task.id }).then(() => fetchTasks());
   };
 
   return (
     <div className="container flex flex-col w-full max-w-[100%]">
       <div className="fixed flex w-full max-w-[100%]">
         <TaskInput
-          content={content}
-          onChange={(e) => setContent(e.target.value)}
+          content={description}
+          onChange={(e) => setDescription(e.target.value)}
           onKeyDown={handleKeyDown}
         />
         <DeleteTaskButton onClick={handleDeleteAll} />

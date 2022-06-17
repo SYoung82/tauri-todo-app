@@ -3,10 +3,13 @@
     windows_subsystem = "windows"
 )]
 
-use std::fs::OpenOptions;
-use std::fs::{copy, remove_file};
-use std::io::prelude::*;
-use std::io::{BufRead, BufReader};
+extern crate app;
+extern crate diesel;
+
+use self::models::*;
+use app::*;
+
+use std::env;
 use std::string::String;
 use std::vec::Vec;
 
@@ -16,8 +19,8 @@ fn main() {
         .menu(tauri::Menu::os_default(&context.package_info().name))
         .invoke_handler(tauri::generate_handler![
             add_task,
-            delete_task_by_index,
-            delete_tasks,
+            delete_task_by_id,
+            delete_all_tasks,
             get_tasks
         ])
         .run(context)
@@ -25,57 +28,28 @@ fn main() {
 }
 
 #[tauri::command]
-fn add_task(content: String) {
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("../tasks.txt")
-        .expect("Error openening file");
-
-    writeln!(file, "{}", content).expect("Error writing to file");
+fn add_task(description: String) {
+    let connection = establish_connection();
+    create_task(&connection, &description);
 }
 
 #[tauri::command]
-fn delete_task_by_index(index: usize) {
-    let file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open("../tasks.txt")
-        .expect("Error openening file");
+fn delete_task_by_id(id: usize) {
+    let connection = establish_connection();
 
-    let mut temp_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("../tasks.txt.tmp")
-        .expect("Error openening file");
-
-    let reader = BufReader::new(file);
-    for (line_index, line) in reader.lines().enumerate() {
-        if line_index != index {
-            writeln!(temp_file, "{}", line.unwrap()).expect("Error writing to file");
-        }
-    }
-
-    copy("../tasks.txt.tmp", "../tasks.txt").expect("Error copying file");
-    remove_file("../tasks.txt.tmp").expect("Error deleting temporary file");
+    delete_task(&connection, id.try_into().unwrap());
 }
 
 #[tauri::command]
-fn delete_tasks() {
-    remove_file("../tasks.txt").expect("Error deleting file");
+fn delete_all_tasks() {
+    let connection = establish_connection();
+
+    delete_tasks(&connection);
 }
 
 #[tauri::command]
-fn get_tasks() -> Vec<String> {
-    // let file = File::open("../tasks.txt").expect("Error opening file");
-    let file = OpenOptions::new()
-        .create(true)
-        .read(true)
-        .write(true)
-        .open("../tasks.txt")
-        .expect("Error openening file");
+fn get_tasks() -> Vec<Task> {
+    let connection = establish_connection();
 
-    let reader = BufReader::new(file);
-
-    reader.lines().filter_map(std::io::Result::ok).collect()
+    read_tasks(&connection)
 }
